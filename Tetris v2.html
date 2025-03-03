@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetris</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+    <style>
+        body { background-color: black; color: white; text-align: center; }
+        canvas { display: block; margin: auto; border: 2px solid white; }
+    </style>
+</head>
+<body>
+    <h1 class="text-2xl font-bold my-4">TETRIS</h1>
+    <canvas id="gameCanvas"></canvas>
+    <p class="text-lg mt-2">Puntuación: <span id="score">0</span></p>
+    <p class="text-lg">Nivel: <span id="level">1</span></p>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const ROWS = 20, COLS = 10, SIZE = 30;
+        canvas.width = COLS * SIZE;
+        canvas.height = ROWS * SIZE;
+        let board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+        let score = 0, level = 1;
+        let shapes = [
+            [[1, 1, 1, 1]], 
+            [[1, 1], [1, 1]],
+            [[1, 1, 0], [0, 1, 1]],
+            [[0, 1, 1], [1, 1, 0]],
+            [[1, 1, 1], [0, 1, 0]],
+            [[1, 1, 1], [1, 0, 0]],
+            [[1, 1, 1], [0, 0, 1]]
+        ];
+        let colors = ["cyan", "yellow", "blue", "orange", "green", "purple", "red"];
+        let current = { shape: [], color: "", x: 3, y: 0 };
+        function newPiece() {
+            let index = Math.floor(Math.random() * shapes.length);
+            current.shape = shapes[index];
+            current.color = colors[index];
+            current.x = 3;
+            current.y = 0;
+        }
+        function drawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            board.forEach((row, y) => row.forEach((cell, x) => {
+                if (cell) {
+                    ctx.fillStyle = cell;
+                    ctx.fillRect(x * SIZE, y * SIZE, SIZE, SIZE);
+                    ctx.strokeRect(x * SIZE, y * SIZE, SIZE, SIZE);
+                }
+            }));
+            current.shape.forEach((row, y) => row.forEach((cell, x) => {
+                if (cell) {
+                    ctx.fillStyle = current.color;
+                    ctx.fillRect((current.x + x) * SIZE, (current.y + y) * SIZE, SIZE, SIZE);
+                    ctx.strokeRect((current.x + x) * SIZE, (current.y + y) * SIZE, SIZE, SIZE);
+                }
+            }));
+        }
+        function movePiece(dx, dy) {
+            if (!collision(dx, dy, current.shape)) {
+                current.x += dx;
+                current.y += dy;
+                drawBoard();
+            }
+        }
+        function dropPiece() {
+            if (!collision(0, 1, current.shape)) {
+                current.y++;
+            } else {
+                mergePiece();
+                newPiece();
+            }
+            drawBoard();
+        }
+        function collision(dx = 0, dy = 0, shape = current.shape) {
+            return shape.some((row, y) => row.some((cell, x) =>
+                cell && (board[current.y + y + dy]?.[current.x + x + dx] !== 0 || current.x + x + dx < 0 || current.x + x + dx >= COLS || current.y + y + dy >= ROWS)));
+        }
+        function mergePiece() {
+            current.shape.forEach((row, y) => row.forEach((cell, x) => {
+                if (cell) board[current.y + y][current.x + x] = current.color;
+            }));
+            clearLines();
+        }
+        function clearLines() {
+            board = board.filter(row => row.some(cell => !cell));
+            while (board.length < ROWS) board.unshift(Array(COLS).fill(0));
+            score += 10;
+            document.getElementById("score").textContent = score;
+        }
+        function rotatePiece() {
+            let temp = current.shape[0].map((_, i) => current.shape.map(row => row[i])).reverse();
+            if (!collision(0, 0, temp)) {
+                current.shape = temp;
+                drawBoard();
+            }
+        }
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowLeft") movePiece(-1, 0);
+            if (e.key === "ArrowRight") movePiece(1, 0);
+            if (e.key === "ArrowDown") dropPiece();
+            if (e.key === "ArrowUp") rotatePiece();
+        });
+        function updateGame() {
+            dropPiece();
+            setTimeout(updateGame, 500 - level * 50);
+        }
+        newPiece();
+        updateGame();
+    </script>
+</body>
+</html>
